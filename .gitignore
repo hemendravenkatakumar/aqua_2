@@ -1,0 +1,7 @@
+venv/
+.env
+firebase-key.json
+__pycache__/
+*.pyc
+db.sqlite3
+.DS_Store
