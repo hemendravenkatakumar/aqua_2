@@ -49,6 +49,8 @@ class VerifyOTPView(APIView):
         if not phone:
             return Response({'error': 'Could not retrieve phone number from token'}, status=status.HTTP_400_BAD_REQUEST)
         
+        role = request.data.get('role')
+        
         # Check if user exists in MongoDB
         user = db.users.find_one({'phone': phone})
         new_user = False
@@ -57,7 +59,7 @@ class VerifyOTPView(APIView):
             user_data = {
                 'phone': phone,
                 'name': '',
-                'role': '',
+                'role': role or 'farmer',
                 'loc': '',
                 'exp': '',
                 'lang': 'en',
@@ -66,6 +68,10 @@ class VerifyOTPView(APIView):
             res = db.users.insert_one(user_data)
             user = db.users.find_one({'_id': res.inserted_id})
             new_user = True
+        elif role and user.get('role') != role:
+            # Update role to the selected role during this login session
+            db.users.update_one({'_id': user['_id']}, {'$set': {'role': role}})
+            user['role'] = role
         
         # Generate JWT Token for App API calls
         payload = {
