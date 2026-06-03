@@ -124,3 +124,92 @@ class ProfileView(APIView):
             user['created'] = user['created'].isoformat()
             
         return Response(user, status=status.HTTP_200_OK)
+
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        data = request.data
+        phone = data.get('phone')
+        pin = data.get('pin')
+        name = data.get('name', '')
+        role = data.get('role', 'farmer')
+        loc = data.get('loc', '')
+        exp = data.get('exp', '')
+        lang = data.get('lang', 'en')
+
+        if not phone or not pin:
+            return Response({'error': 'phone and pin are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if user already exists
+        existing_user = db.users.find_one({'phone': phone})
+        if existing_user:
+            return Response({'error': 'An account with this phone number already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_data = {
+            'phone': phone,
+            'pin': pin,
+            'name': name,
+            'role': role,
+            'loc': loc,
+            'exp': exp,
+            'lang': lang,
+            'created': datetime.datetime.utcnow()
+        }
+
+        res = db.users.insert_one(user_data)
+        user = db.users.find_one({'_id': res.inserted_id})
+
+        # Generate JWT Token
+        payload = {
+            'phone': phone,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=30)
+        }
+        api_token = jwt.encode(payload, settings.JWT_SECRET, algorithm='HS256')
+
+        user['id'] = str(user['_id'])
+        del user['_id']
+        if 'created' in user:
+            user['created'] = user['created'].isoformat()
+
+        return Response({
+            'token': api_token,
+            'new_user': True,
+            'user': user
+        }, status=status.HTTP_201_CREATED)
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        data = request.data
+        phone = data.get('phone')
+        pin = data.get('pin')
+
+        if not phone or not pin:
+            return Response({'error': 'phone and pin are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = db.users.find_one({'phone': phone})
+        if not user:
+            return Response({'error': 'No account found with this phone number. Please register first.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.get('pin') != pin:
+            return Response({'error': 'Incorrect PIN. Please try again.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Generate JWT Token
+        payload = {
+            'phone': phone,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=30)
+        }
+        api_token = jwt.encode(payload, settings.JWT_SECRET, algorithm='HS256')
+
+        user['id'] = str(user['_id'])
+        del user['_id']
+        if 'created' in user:
+            user['created'] = user['created'].isoformat()
+
+        return Response({
+            'token': api_token,
+            'new_user': False,
+            'user': user
+        }, status=status.HTTP_200_OK)
