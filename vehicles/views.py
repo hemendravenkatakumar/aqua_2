@@ -7,7 +7,12 @@ from bson import ObjectId
 
 class VehicleListView(APIView):
     def get(self, request):
-        vehicles = list(db.vehicles.find({'user_id': ObjectId(request.user.id)}).sort('created', -1))
+        query = {'user_id': ObjectId(request.user.id)}
+        status_param = request.query_params.get('status')
+        if status_param:
+            query['status'] = status_param
+            
+        vehicles = list(db.vehicles.find(query).sort('created', -1))
         
         for v in vehicles:
             v['id'] = str(v['_id'])

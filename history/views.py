@@ -41,8 +41,11 @@ class BatchListView(APIView):
         
         res = db.batches.insert_one(batch_data)
         
-        # Proactively clear/reset the active bags after saving a batch if requested (or let client decide)
-        # We can keep them or let client handle clearing them.
+        # Mark all currently active bags for this user as inactive and link them to this batch
+        db.bags.update_many(
+            {'user_id': ObjectId(request.user.id), 'active': {'$ne': False}},
+            {'$set': {'active': False, 'batch_id': res.inserted_id}}
+        )
         
         batch_data['id'] = str(res.inserted_id)
         del batch_data['_id']

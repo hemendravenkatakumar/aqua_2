@@ -8,9 +8,11 @@ from bson import ObjectId
 
 class BagListView(APIView):
     def get(self, request):
-        # By default, retrieve bags created today (in user's timezone/local or UTC)
-        # But we can retrieve all bags for this user
-        bags = list(db.bags.find({'user_id': ObjectId(request.user.id)}).sort('created', -1))
+        # Retrieve only active bags for this user
+        bags = list(db.bags.find({
+            'user_id': ObjectId(request.user.id),
+            'active': {'$ne': False}
+        }).sort('created', -1))
         
         # Convert BSON to JSON serializable
         for b in bags:
@@ -37,6 +39,7 @@ class BagListView(APIView):
             'weight': weight,
             'price': price,
             'veh_id': ObjectId(veh_id) if veh_id else None,
+            'active': True,
             'created': datetime.datetime.utcnow()
         }
         
@@ -91,7 +94,10 @@ class BagDetailView(APIView):
 class BagStatsView(APIView):
     def get(self, request):
         user_id = ObjectId(request.user.id)
-        bags = list(db.bags.find({'user_id': user_id}))
+        bags = list(db.bags.find({
+            'user_id': user_id,
+            'active': {'$ne': False}
+        }))
         
         total_bags = len(bags)
         total_weight = sum(b.get('weight', 0.0) for b in bags)
