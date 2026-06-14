@@ -9,23 +9,6 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from config.db import db
 from bson import ObjectId
 
-# Initialize Firebase Admin SDK
-import firebase_admin
-from firebase_admin import credentials, auth as fb_auth
-
-firebase_initialized = False
-try:
-    cred_path = os.path.join(settings.BASE_DIR, 'firebase-key.json')
-    if os.path.exists(cred_path):
-        cred = credentials.Certificate(cred_path)
-        firebase_admin.initialize_app(cred)
-        firebase_initialized = True
-        print("Firebase Admin successfully initialized.")
-    else:
-        print("WARNING: firebase-key.json not found. Real OTP verification will fail until configured.")
-except Exception as e:
-    print(f"WARNING: Failed to initialize Firebase Admin: {e}")
-
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
 
